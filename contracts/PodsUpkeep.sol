@@ -46,7 +46,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @notice Checks if Pods require upkeep. Call in a static manner every block by the Chainlink Upkeep network.
     /// @param checkData Not used in this implementation.
     /// @return upkeepNeeded as true if performUpkeep() needs to be called, false otherwise. performData returned empty. 
-    function checkUpkeep(bytes calldata checkData) override external returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata checkData) override external view returns (bool upkeepNeeded, bytes memory performData) {
         
         address[] memory pods = podsRegistry.getContracts();
         for(uint256 i = 0; i < pods.length; i++){
@@ -64,13 +64,15 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         address[] memory pods = podsRegistry.getContracts();
         for(uint256 i = 0; i < pods.length; i++){
             (bool required, uint256 batchAmount) = amountAboveFloat(IPod(pods[i])); 
-            require(IPod(pods[i]).batch(batchAmount), "PodsUpkeep: batch() failed");
+            if(required) {
+                require(IPod(pods[i]).batch(batchAmount), "PodsUpkeep: batch() failed"); // will this require prevent batch being called further along the array?
+            }
         }
     }
 
     /// @notice Checks if the float conditions indicate that upkeep is required
     /// @param pod The pod for which the check is carried out
-    function checkUpkeepRequired(IPod pod) internal returns (bool) {
+    function checkUpkeepRequired(IPod pod) internal view returns (bool) {
     
         (bool aboveFloat, uint256 amount) = amountAboveFloat(pod);
 
@@ -82,15 +84,15 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     /// @notice Checks the amount 
     /// @param _pod The pod for which the check is carried out
-    function amountAboveFloat(IPod _pod) public returns (bool aboveFloat, uint256 amount) {
+    function amountAboveFloat(IPod _pod) public view returns (bool aboveFloat, uint256 batchAmount) {
         
         uint256 vaultTokenBalance = _pod.vaultTokenBalance(); 
         uint256 targetFloat = vaultTokenBalance.mul(targetFloatFraction); // are these going to be appropriate decimals
 
         if(vaultTokenBalance > targetFloat){
             // _pod.batch(vaultTokenBalance - targetFloat);
-            amount = vaultTokenBalance;
-            return (true, amount);
+            batchAmount = vaultTokenBalance - targetFloat;
+            return (true, batchAmount);
         }
         return (false, 0);
     }
