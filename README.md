@@ -1,9 +1,11 @@
 # pooltogether-pods-operations
 
-[![Coverage Status](https://coveralls.io/repos/github/pooltogether/pooltogether-operations-contracts/badge.svg?branch=main)](https://coveralls.io/github/pooltogether/pooltogether-operations-contracts?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/pooltogether/pooltogether-pods-upkeep/badge.svg?branch=main)](https://coveralls.io/github/pooltogether/pooltogether-pods-upkeep?branch=main)
+
+![Tests](https://github.com/pooltogether/pooltogether-pods-upkeep/actions/workflows/main.yml/badge.svg)
 
 
-PoolTogether Operations contracts is PoolTogether's integration with ChainLinks upkeep system for pods.
+PoolTogether Operations contracts is PoolTogether's integration with ChainLinks Upkeep system for pods.
 
 ## How it works
 
