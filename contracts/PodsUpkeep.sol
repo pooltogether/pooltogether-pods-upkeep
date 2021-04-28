@@ -6,10 +6,10 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
 
+import "@pooltogether/pooltogether-generic-registry/contracts/AddressRegistry.sol";
+
 import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
-import "./interfaces/IContractsRegistry.sol"; // replace with import from @pooltogether/generic-registry
-
 
 ///@notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of the Pods contract
 contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
@@ -17,7 +17,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     using SafeMathUpgradeable for uint256;
     
     /// @notice Address of the registry of pods contract which require upkeep
-    ContractsRegistry public podsRegistry; // or should this live in the PodFloatStrategy repo?
+    AddressRegistry public podsRegistry; // or should this live in the PodFloatStrategy repo?
 
     /// @notice Interval at which pods.batch() will be called
     uint256 public upkeepBlockInterval;    
@@ -36,7 +36,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
 
     /// @notice Contract Constructor. No initializer. 
-    constructor(ContractsRegistry _podsRegistry, address _owner) Ownable() {
+    constructor(AddressRegistry _podsRegistry, address _owner) Ownable() {
         
         podsRegistry = _podsRegistry;
         
@@ -48,8 +48,8 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @return upkeepNeeded as true if performUpkeep() needs to be called, false otherwise. performData returned empty. 
     function checkUpkeep(bytes calldata checkData) override external view returns (bool upkeepNeeded, bytes memory performData) {
         
-        address[] memory pods = podsRegistry.getContracts();
-        for(uint256 i = 0; i < pods.length; i++){
+        address[] memory pods = podsRegistry.getAddresses();
+        for(uint256 i = 0; i < pods.length; i++){ // can get out of gas here -- do we want to implement a batchLimit ?
             if(checkUpkeepRequired(IPod(pods[i]))){
                 return (true, "");
             }
@@ -61,7 +61,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @param performData Not used in this implementation.
     function performUpkeep(bytes calldata performData) override external {
     
-        address[] memory pods = podsRegistry.getContracts();
+        address[] memory pods = podsRegistry.getAddresses();
         for(uint256 i = 0; i < pods.length; i++){
             (bool required, uint256 batchAmount) = amountAboveFloat(IPod(pods[i])); 
             if(required) {

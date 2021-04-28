@@ -1,5 +1,8 @@
 const chalk = require('chalk');
 const { getChainId } = require('hardhat');
+const { factoryDeploy } = require('@pooltogether/pooltogether-proxy-factory-package')
+
+
 
 function dim() {
   console.log(chalk.dim.call(chalk, ...arguments))
@@ -18,28 +21,19 @@ module.exports = async (hardhat) => {
 
     const { getNamedAccounts, deployments, ethers } = hardhat
     const { deploy } = deployments
-    const { deployer } = await getNamedAccounts()
+    const { deployer, podsRegistry } = await getNamedAccounts()
     const namedSigners = await ethers.getNamedSigners()
-    const deployerSigner = namedSigners.deployer
 
-    const batchSize = 5
+    dim(`Deploying  contract from ${deployer}`)
 
-
-    dim(`deploying PrizePoolRegistry contract from ${deployer}`)
-    const prizePoolRegistry = await deploy('PrizePoolRegistry', {
-      args: [],
+    const podsUpkeepDeployResult = await deploy('PodsUpkeep', {
+      args: [podsRegistry, deployer],
       from: deployer,
       skipIfAlreadyDeployed: false
     })
-    green(`Deployed PrizePoolRegistry: ${prizePoolRegistry.address}`)  
+    green(`Deployed podsUpkeepDeployResult: ${podsUpkeepDeployResult.address}`)
 
-    dim(`deploying PrizeStrategyUpkeep contract from ${deployer}`)
-    const prizePoolUpkeep = await deploy('PrizeStrategyUpkeep', {
-      args: [prizePoolRegistry.address, batchSize],
-      from: deployer,
-      skipIfAlreadyDeployed: false
-    })
-    green(`Deployed PrizeStrategyUpkeep: ${prizePoolUpkeep.address}`)
+
   
     // do we want to add the governance prize pools and transfer ownership in here
 
