@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.7.6;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
@@ -10,6 +9,7 @@ import "@pooltogether/pooltogether-generic-registry/contracts/AddressRegistry.so
 
 import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
+
 
 ///@notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of the Pods contract
 contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
@@ -41,6 +41,10 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         podsRegistry = _podsRegistry;
         
         transferOwnership(_owner);
+
+        lastUpkeepBlockNumber = block.number;
+
+        // initialize values for block interval and float rate?
     }
 
     /// @notice Checks if Pods require upkeep. Call in a static manner every block by the Chainlink Upkeep network.
@@ -73,7 +77,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @notice Checks if the float conditions indicate that upkeep is required
     /// @param pod The pod for which the check is carried out
     function checkUpkeepRequired(IPod pod) internal view returns (bool) {
-    
+        
         (bool aboveFloat, uint256 amount) = amountAboveFloat(pod);
 
         if(block.number >= lastUpkeepBlockNumber + upkeepBlockInterval && aboveFloat){
@@ -87,13 +91,13 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     function amountAboveFloat(IPod _pod) public view returns (bool aboveFloat, uint256 batchAmount) {
         
         uint256 vaultTokenBalance = _pod.vaultTokenBalance(); 
-        uint256 targetFloat = vaultTokenBalance.mul(targetFloatFraction); // are these going to be appropriate decimals
+        uint256 targetFloat = vaultTokenBalance.mul(targetFloatFraction).div(1 ether); // are these going to be appropriate decimals
 
         if(vaultTokenBalance > targetFloat){
-            // _pod.batch(vaultTokenBalance - targetFloat);
             batchAmount = vaultTokenBalance - targetFloat;
             return (true, batchAmount);
         }
+
         return (false, 0);
     }
 
@@ -106,7 +110,8 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     /// @notice Performs upkeep on the pods contract
     /// @param _targetFloatFraction The new targetFloatFraction
-    function updateTargetFloatFractionInterval(uint256 _targetFloatFraction) external onlyOwner {
+    /// @dev Should account for number of decimals of pod
+    function updateTargetFloatFraction(uint256 _targetFloatFraction) external onlyOwner {
         targetFloatFraction = _targetFloatFraction;
         emit TargetFloatFractionUpdated(_targetFloatFraction); 
     }
