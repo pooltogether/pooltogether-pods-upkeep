@@ -11,13 +11,13 @@ import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
 
 
-///@notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of the Pods contract
+///@notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of a registry of Pod contracts
 contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     using SafeMathUpgradeable for uint256;
     
     /// @notice Address of the registry of pods contract which require upkeep
-    AddressRegistry public podsRegistry; // or should this live in the PodFloatStrategy repo?
+    AddressRegistry public podsRegistry;
 
     /// @notice Interval at which pods.batch() will be called
     uint256 public upkeepBlockInterval;    
@@ -69,7 +69,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         for(uint256 i = 0; i < pods.length; i++){
             (bool required, uint256 batchAmount) = amountAboveFloat(IPod(pods[i])); 
             if(required) {
-                require(IPod(pods[i]).batch(batchAmount), "PodsUpkeep: batch() failed"); // will this require prevent batch being called further along the array?
+                require(IPod(pods[i]).batch(batchAmount), "PodsUpkeep: batch() failed");
             }
         }
     }
