@@ -57,28 +57,8 @@ describe('Pods Upkeep', function() {
   })
 
   describe('able to call checkUpkeep()', () => {
-    it('float above threshold, upkeep needed', async () => {
-      await podsUpkeep.updateBlockUpkeepInterval(1)
-      await podsUpkeep.updateTargetFloatFraction(ethers.utils.parseEther("0.2"))
-      await pod1.mock.vaultTokenBalance.returns(ethers.utils.parseEther("1"))
-      
-      const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
-      expect(checkResult[0]).to.be.equal(true)
-    })
-
-    it('float below threshold, upkeep not needed', async () => {
-      await podsUpkeep.updateBlockUpkeepInterval(1)
-      await podsUpkeep.updateTargetFloatFraction(ethers.utils.parseEther("2"))
-      await pod1.mock.vaultTokenBalance.returns(ethers.utils.parseEther("1"))
-      
-      const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
-      expect(checkResult[0]).to.be.equal(false)
-    })
-
     it('block interval passed, upkeep needed', async () => {
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      await podsUpkeep.updateTargetFloatFraction(ethers.utils.parseEther("0.2"))
-      await pod1.mock.vaultTokenBalance.returns(ethers.utils.parseEther("1"))
       
       const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
       expect(checkResult[0]).to.be.equal(true)
@@ -86,8 +66,6 @@ describe('Pods Upkeep', function() {
 
     it('block interval not passed, upkeep not needed', async () => {
       await podsUpkeep.updateBlockUpkeepInterval(10000)
-      await podsUpkeep.updateTargetFloatFraction(ethers.utils.parseEther("2"))
-      await pod1.mock.vaultTokenBalance.returns(ethers.utils.parseEther("1"))
       
       const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
       expect(checkResult[0]).to.be.equal(false)

@@ -1,4 +1,4 @@
-# pooltogether-pods-operations
+# pooltogether-pods-upkeep
 
 [![Coverage Status](https://coveralls.io/repos/github/pooltogether/pooltogether-pods-upkeep/badge.svg?branch=main)](https://coveralls.io/github/pooltogether/pooltogether-pods-upkeep?branch=main)
 

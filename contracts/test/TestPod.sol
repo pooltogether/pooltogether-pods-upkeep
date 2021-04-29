@@ -6,7 +6,7 @@ import "../interfaces/IPod.sol";
 
 contract MockPod is IPod {
 
-    function batch(uint256 batchAmount) external override returns (bool){
+    function batch() external override returns (bool){
         return true;
     }
     

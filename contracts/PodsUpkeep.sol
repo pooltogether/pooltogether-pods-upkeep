@@ -19,11 +19,15 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @notice Address of the registry of pods contract which require upkeep
     AddressRegistry public podsRegistry;
 
+    /// @notice Data structure which stores the last update per Pod by index
+    struct PodLastUpdatedBlockNumber{
+        uint32[8] lastPodUpkeep;
+    }
+
     /// @notice Interval at which pods.batch() will be called
     uint256 public upkeepBlockInterval;    
 
-    /// @notice Block number when batch was last called successfully
-    uint256 public lastUpkeepBlockNumber;
+    PodLastUpdatedBlockNumber internal lastUpkeepBlockNumbers; // only internal allowed?
 
     /// @notice Minimum pod float fraction
     uint256 public targetFloatFraction;
@@ -41,9 +45,6 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         podsRegistry = _podsRegistry;
         
         transferOwnership(_owner);
-
-        lastUpkeepBlockNumber = block.number;
-
         // initialize values for block interval and float rate?
     }
 
@@ -54,7 +55,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         
         address[] memory pods = podsRegistry.getAddresses();
         for(uint256 i = 0; i < pods.length; i++){ // can get out of gas here -- do we want to implement a batchLimit ?
-            if(checkUpkeepRequired(IPod(pods[i]))){
+            if(checkUpkeepRequired(IPod(pods[i]), i)){
                 return (true, "");
             }
         }
@@ -67,38 +68,24 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     
         address[] memory pods = podsRegistry.getAddresses();
         for(uint256 i = 0; i < pods.length; i++){
-            (bool required, uint256 batchAmount) = amountAboveFloat(IPod(pods[i])); 
+            
+            bool required = checkUpkeepRequired(IPod(pods[i]), i);
+            
             if(required) {
-                require(IPod(pods[i]).batch(batchAmount), "PodsUpkeep: batch() failed");
+                uint256 batchAmount = IPod(pods[i]).vaultTokenBalance();
+                require(IPod(pods[i]).batch(), "PodsUpkeep: batch() failed");
             }
         }
     }
 
     /// @notice Checks if the float conditions indicate that upkeep is required
     /// @param pod The pod for which the check is carried out
-    function checkUpkeepRequired(IPod pod) internal view returns (bool) {
+    function checkUpkeepRequired(IPod pod, uint256 index) internal view returns (bool) {
         
-        (bool aboveFloat, uint256 amount) = amountAboveFloat(pod);
-
-        if(block.number >= lastUpkeepBlockNumber + upkeepBlockInterval && aboveFloat){
+        if(block.number >= lastUpkeepBlockNumbers.lastPodUpkeep[index] + upkeepBlockInterval){
             return true;
         }
         return false;
-    }
-
-    /// @notice Checks the amount 
-    /// @param _pod The pod for which the check is carried out
-    function amountAboveFloat(IPod _pod) public view returns (bool aboveFloat, uint256 batchAmount) {
-        
-        uint256 vaultTokenBalance = _pod.vaultTokenBalance(); 
-        uint256 targetFloat = vaultTokenBalance.mul(targetFloatFraction).div(1 ether); // are these going to be appropriate decimals
-
-        if(vaultTokenBalance > targetFloat){
-            batchAmount = vaultTokenBalance - targetFloat;
-            return (true, batchAmount);
-        }
-
-        return (false, 0);
     }
 
     /// @notice Updates the upkeepBlockInterval. Can only be called by the contract owner
