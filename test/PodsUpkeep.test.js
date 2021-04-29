@@ -29,7 +29,7 @@ describe('Pods Upkeep', function() {
     pod1 = await deployMockContract(wallet, MockPodArtifact.abi, overrides)
     pod2 = await deployMockContract(wallet, MockPodArtifact.abi, overrides)
 
-    await podsRegistry.addAddresses([pod1.address])
+    await podsRegistry.addAddresses([pod1.address, pod2.address])
     
   })
 
@@ -40,18 +40,9 @@ describe('Pods Upkeep', function() {
         to.emit(podsUpkeep, "UpkeepBlockIntervalUpdated").withArgs(6)
 
     })
+    
     it('non owner cannot update the block interval', async () => {
       await expect(podsUpkeep.connect(wallet2).updateBlockUpkeepInterval(5)).
-        to.be.revertedWith("Ownable: caller is not the owner")
-    })
-    it('can update the target float fraction', async () => {
-      expect(await podsUpkeep.updateTargetFloatFraction(5))
-      expect(await podsUpkeep.updateTargetFloatFraction(6)).
-        to.emit(podsUpkeep, "TargetFloatFractionUpdated").withArgs(6)
-
-    })
-    it('non owner cannot update the target float fraction', async () => {
-      await expect(podsUpkeep.connect(wallet2).updateTargetFloatFraction(5)).
         to.be.revertedWith("Ownable: caller is not the owner")
     })
   })
@@ -59,16 +50,42 @@ describe('Pods Upkeep', function() {
   describe('able to call checkUpkeep()', () => {
     it('block interval passed, upkeep needed', async () => {
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      
+            
       const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
       expect(checkResult[0]).to.be.equal(true)
     })
 
     it('block interval not passed, upkeep not needed', async () => {
-      await podsUpkeep.updateBlockUpkeepInterval(10000)
-      
+      await podsUpkeep.updateBlockUpkeepInterval(1000)
+      let provider = hre.ethers.provider
+
       const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
       expect(checkResult[0]).to.be.equal(false)
+    })
+
+    it('upkeep not needed, block interval passed, then needed', async () => {
+      const provider = hre.ethers.provider
+
+      // performing Upkeep so that the lastUpdatedBlockNumbers are recorded
+      await podsUpkeep.updateBlockUpkeepInterval(0)
+      await pod1.mock.batch.returns(true)
+      await pod2.mock.batch.returns(true)
+      await podsUpkeep.performUpkeep("0x")
+
+
+      const upkeepInterval = 20
+      await podsUpkeep.updateBlockUpkeepInterval(upkeepInterval)
+      // now should not require upkeep since interval has not passed
+      const checkResultStart = await podsUpkeep.callStatic.checkUpkeep("0x")
+      expect(checkResultStart[0]).to.be.equal(false)
+
+      // move forward the upkeepIntervalnumber of blocks
+      for(let index = 0; index < upkeepInterval; index++){
+        await provider.send('evm_mine', [])
+      }
+      // should now require upKeep      
+      const checkResultEnd = await podsUpkeep.callStatic.checkUpkeep("0x")
+      expect(checkResultEnd[0]).to.be.equal(true)
     })
 
   })
@@ -79,19 +96,15 @@ describe('Pods Upkeep', function() {
     it('can execute batch()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      await podsUpkeep.updateTargetFloatFraction(ethers.utils.parseEther("0.2"))
-      await pod1.mock.vaultTokenBalance.returns(ethers.utils.parseEther("1"))
-
+   
       await pod1.mock.batch.revertsWithReason("batch-mock-revert")
+      await pod2.mock.batch.revertsWithReason("batch-mock-revert")
       await expect(podsUpkeep.performUpkeep("0x")).to.be.revertedWith("batch-mock-revert")
     })
 
     it('reverts on execute batch()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      await podsUpkeep.updateTargetFloatFraction(ethers.utils.parseEther("0.2"))
-      await pod1.mock.vaultTokenBalance.returns(ethers.utils.parseEther("1"))
-
       await pod1.mock.batch.returns(false)
       // await expect(podsUpkeep.performUpkeep("0x")).to.be.revertedWith("PodsUpkeep: batch() failed")
       await expect(podsUpkeep.performUpkeep("0x")).to.be.reverted

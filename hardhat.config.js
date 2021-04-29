@@ -3,7 +3,8 @@ require('hardhat-deploy')
 require('hardhat-deploy-ethers')
 require('solidity-coverage')
 require('hardhat-dependency-compiler')
-// require('hardhat-abi-exporter')
+require('hardhat-gas-reporter')
+require('hardhat-abi-exporter')
 
 const networks = require('./hardhat.networks')
 
