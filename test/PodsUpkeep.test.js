@@ -23,7 +23,7 @@ describe('Pods Upkeep', function() {
     podsRegistry = await podsRegistryContractFactory.deploy("Pods", wallet.address)
   
     const podsUpkeepContractFactory = await hre.ethers.getContractFactory("PodsUpkeep", wallet, overrides)
-    podsUpkeep = await podsUpkeepContractFactory.deploy(podsRegistry.address, wallet.address)
+    podsUpkeep = await podsUpkeepContractFactory.deploy(podsRegistry.address, wallet.address, 0)
 
     const MockPodArtifact = await hre.artifacts.readArtifact("MockPod")
     pod1 = await deployMockContract(wallet, MockPodArtifact.abi, overrides)
@@ -40,7 +40,7 @@ describe('Pods Upkeep', function() {
         to.emit(podsUpkeep, "UpkeepBlockIntervalUpdated").withArgs(6)
 
     })
-    
+
     it('non owner cannot update the block interval', async () => {
       await expect(podsUpkeep.connect(wallet2).updateBlockUpkeepInterval(5)).
         to.be.revertedWith("Ownable: caller is not the owner")

@@ -11,11 +11,8 @@ PoolTogether Operations contracts is PoolTogether's integration with ChainLinks 
 
 The goal of this system is to automate calling the `batch` function of the PoolTogether governance owned prize pool pods.
 
-A registry of these prize pools exists (as an Ownable MappedSinglyLinkedList) and logic is run to see if the batch function requires running. This is determined by:
-- A time period (in blocks), as calculated by `upkeepBlockInterval`
-- A float level calculation
-
-To prevent out-of-gas situations, a prize pool upkeep batch size is defined in the constructor. 
+A registry of these prize pools exists (as an Ownable MappedSinglyLinkedList) and logic is run to see if the batch function requires running. This is determined by
+a time period (in blocks): `upkeepBlockInterval`
 
 The upkeepers performing the upkeep are compensated in LINK so the PrizeStrategyUpkeep contact needs to maintain a healthy balance of LINK. 
 

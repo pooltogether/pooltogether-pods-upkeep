@@ -33,12 +33,12 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     event UpkeepBlockIntervalUpdated(uint upkeepBlockInterval);
         
     /// @notice Contract Constructor. No initializer. 
-    constructor(AddressRegistry _podsRegistry, address _owner) Ownable() {
+    constructor(AddressRegistry _podsRegistry, address _owner, uint256 _upkeepBlockInterval) Ownable() {
         
         podsRegistry = _podsRegistry;
-        
         transferOwnership(_owner);
-        // initialize values for block interval? save extra tx?
+        upkeepBlockInterval = _upkeepBlockInterval;
+        emit UpkeepBlockIntervalUpdated(_upkeepBlockInterval);
     }
 
     /// @notice Checks if Pods require upkeep. Call in a static manner every block by the Chainlink Upkeep network.
@@ -83,12 +83,11 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         }
         return false;
     }
-
+    
     /// @notice Updates the upkeepBlockInterval. Can only be called by the contract owner
     /// @param _upkeepBlockInterval The new upkeepBlockInterval (in blocks)
     function updateBlockUpkeepInterval(uint256 _upkeepBlockInterval) external onlyOwner {
         upkeepBlockInterval = _upkeepBlockInterval;
         emit UpkeepBlockIntervalUpdated(_upkeepBlockInterval);
     }
-
 }
