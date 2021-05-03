@@ -33,6 +33,24 @@ describe('Pods Upkeep', function() {
     
   })
 
+  describe.only('bitwise operations ', () => {
+    it('can update the timestamp per pod', async () => {
+
+      const lastTimestamp = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff")
+
+      expect(await podsUpkeep.updateLastBlockNumberForIndex(lastTimestamp, 1, 0)).to.equal(ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffff00000000ffffffff"))
+      expect(await podsUpkeep.updateLastBlockNumberForIndex(lastTimestamp, 2, 0)).to.equal(ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffff00000000ffffffffffffffff"))
+    
+      expect(await podsUpkeep.updateLastBlockNumberForIndex(lastTimestamp, 2, "0x1e")).to.equal(ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffff0000001effffffffffffffff"))
+    })
+
+    it('can read the timestamp per pod', async () => {
+      expect(await podsUpkeep.readLastBlockNumberForIndex("0xffffffffffffffffffffffffffffffffffffffff0000001effffffffffffffff", 2)).to.equal(ethers.BigNumber.from("0x1e"))
+
+    })
+  })
+
+
   describe('Only owner can call admin functions ', () => {
     it('can update the block interval', async () => {
       expect(await podsUpkeep.updateBlockUpkeepInterval(5))

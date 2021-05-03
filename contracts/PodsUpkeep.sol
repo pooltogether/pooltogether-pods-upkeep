@@ -10,6 +10,9 @@ import "@pooltogether/pooltogether-generic-registry/contracts/AddressRegistry.so
 import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
 
+import "hardhat/console.sol";
+
+
 /// @notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of a registry of Pod contracts
 /// @dev This can only handle 8 Pods safely due to the gas saving data structure PodLoadUpkeepBlockNumber
 contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
@@ -19,19 +22,45 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @notice Address of the registry of pods contract which require upkeep
     AddressRegistry public podsRegistry;
 
-    /// @notice Data structure which stores the last upkeep block per Pod by index
-    struct PodLastUpkeepBlockNumber{
-        uint32[8] lastPodUpkeep;
+    uint8 constant PODS_PACKED_ARRAY_SIZE = 10;
+
+    uint256[PODS_PACKED_ARRAY_SIZE] internal lastUpkeepBlockNumber;
+
+    function _updateLastBlockNumberForPodIndex(uint256 _existingUpkeepBlockNumbers, uint8 _podIndex, uint32 _value) internal pure returns (uint256) { 
+
+        uint256 mask =  (type(uint32).max | uint256(0)) << (_podIndex * 32);
+        uint256 updateBits =  (uint256(0) | _value) << (32 * _podIndex);
+        
+        return (updateBits | ~mask) & (_existingUpkeepBlockNumbers | ~mask);
     }
 
-    PodLastUpkeepBlockNumber internal lastUpkeepBlockNumbers;
+    function _readLastBlockNumberForPodIndex(uint256 _existingUpkeepBlockNumbers, uint8 _podIndex) internal pure returns (uint32) { 
+  
+        uint256 mask =  (type(uint32).max | uint256(0)) << (_podIndex * 32);
+        return uint32((_existingUpkeepBlockNumbers & mask) >> (_podIndex * 32));
+    }
+
+    /// @notice Get the last Upkeep block number for a pod
+    /// @param podIndex The position of the pod in the Registry
+    function readLastBlockNumberForPodIndex(uint256 podIndex) public view returns (uint32) {
+        
+        uint256 wordIndex = podIndex / 8;     // returns the 256 bit word
+        return _readLastBlockNumberForPodIndex(lastUpkeepBlockNumber[wordIndex], uint8(podIndex % 8));
+    }
+
 
     /// @notice Global upkeep interval expressed in blocks at which pods.batch() will be called
     uint256 public upkeepBlockInterval;    
 
     /// @notice Emitted when the upkeep block interval is updated
     event UpkeepBlockIntervalUpdated(uint upkeepBlockInterval);
-        
+
+    /// @notice Emitted when the upkeep max batch is updated
+    event UpkeepMaxBatchUpdated(uint upkeepMaxBatch);
+
+    /// @notice Maximum number of pods that performUpkeep can be called on
+    uint256 public upkeepMaxBatch;
+
     /// @notice Contract Constructor. No initializer. 
     constructor(AddressRegistry _podsRegistry, address _owner, uint256 _upkeepBlockInterval) Ownable() {
         
@@ -47,11 +76,23 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     function checkUpkeep(bytes calldata checkData) override external view returns (bool upkeepNeeded, bytes memory performData) {
         
         address[] memory pods = podsRegistry.getAddresses();
-        for(uint256 i = 0; i < pods.length; i++){ // can get out of gas here -- do we want to implement a batchLimit ?
-            if(checkUpkeepRequired(i)){
-                return (true, "");
+        uint256 _upkeepBlockInterval = upkeepBlockInterval;
+
+        uint256 podsLenght = pods.length;
+
+        for(uint256 podWord = 0; podWord < podsLenght / 8; podWord++){
+            
+            uint256 _lastUpkeep = lastUpkeepBlockNumber[podWord]; // this performs the SLOAD
+            
+            for(uint256 i = 0; i + (podWord * 8) < podsLenght; i++){ // pod index within word -- && batch limit conditional?
+                
+                uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_lastUpkeep, uint8(i));
+                if(block.number > podLastUpkeepBlockNumber + _upkeepBlockInterval){
+                    return (true, "");
+                }
             }
-        }
+
+        }               
         return (false, "");    
     }
 
@@ -60,34 +101,43 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     function performUpkeep(bytes calldata performData) override external {
     
         address[] memory pods = podsRegistry.getAddresses();
+        uint256 podsLenght = pods.length;
         
-        for(uint256 i = 0; i < pods.length; i++){
+        for(uint256 podWord = 0; podWord < podsLenght / 8; podWord++){ // give word index
             
-            bool required = checkUpkeepRequired(i);
-            
-            if(required) {
-                require(IPod(pods[i]).batch(), "PodsUpkeep: batch() failed");
-                lastUpkeepBlockNumbers.lastPodUpkeep[i] = uint32(block.number);
+            uint256 _updateBlockNumber = lastUpkeepBlockNumber[podWord]; // this performs the SLOAD
+
+            for(uint256 i = 0; i + (podWord * 8) < podsLenght; i++){ // pod index within word -- && batch limit conditional?
+                
+                uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_updateBlockNumber, uint8(i));
+
+                console.log("Reading Last Block Number for i ", i);
+                console.log("podLastUpkeep ", podLastUpkeepBlockNumber);
+
+                if(block.number > podLastUpkeepBlockNumber + upkeepBlockInterval) {
+                    IPod(pods[i]).batch();
+                    // updated pod's most recent upkeep block number and store update to that 256 bit word
+                    _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, uint8(i), uint32(block.number));
+                }
             }
+            
+            // update the entire 256 bit word at once
+            lastUpkeepBlockNumber[podWord] = _updateBlockNumber;
         }
     }
 
-    /// @notice Checks if the float conditions indicate that upkeep is required
-    /// @param index The index of the pod for lastUpkeepBlockNumbers lookup 
-    function checkUpkeepRequired(uint256 index) internal view returns (bool) {
 
-        uint32[8] memory lastPodUpkeep = lastUpkeepBlockNumbers.lastPodUpkeep;
-        
-        if(block.number >= lastPodUpkeep[index] + upkeepBlockInterval){
-            return true;
-        }
-        return false;
-    }
-    
     /// @notice Updates the upkeepBlockInterval. Can only be called by the contract owner
     /// @param _upkeepBlockInterval The new upkeepBlockInterval (in blocks)
     function updateBlockUpkeepInterval(uint256 _upkeepBlockInterval) external onlyOwner {
         upkeepBlockInterval = _upkeepBlockInterval;
         emit UpkeepBlockIntervalUpdated(_upkeepBlockInterval);
+    }
+
+    /// @notice Updates the upkeep max batch. Can only be called by the contract owner
+    /// @param _upkeepMaxBatch The new _upkeepMaxBatch
+    function updateUpkeepBatch(uint256 _upkeepMaxBatch) external onlyOwner {
+        upkeepMaxBatch = _upkeepMaxBatch;
+        emit UpkeepMaxBatchUpdated(_upkeepMaxBatch);
     }
 }
