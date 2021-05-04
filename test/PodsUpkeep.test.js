@@ -23,7 +23,7 @@ describe('Pods Upkeep', function() {
     podsRegistry = await podsRegistryContractFactory.deploy("Pods", wallet.address)
   
     const podsUpkeepContractFactory = await hre.ethers.getContractFactory("PodsUpkeepHarness", wallet, overrides)
-    podsUpkeep = await podsUpkeepContractFactory.deploy(podsRegistry.address, wallet.address, 0, 20)
+    podsUpkeep = await podsUpkeepContractFactory.deploy(podsRegistry.address, wallet.address, 0, 5)
 
     const MockPodArtifact = await hre.artifacts.readArtifact("MockPod")
     pod1 = await deployMockContract(wallet, MockPodArtifact.abi, overrides)
@@ -105,13 +105,13 @@ describe('Pods Upkeep', function() {
 
     it('can update the Max Upkeep Batch', async () => {
       
-      expect(await podsUpkeep.updateUpkeepBatch(6)).
-        to.emit(podsUpkeep, "UpkeepMaxBatchUpdated").withArgs(6)
+      expect(await podsUpkeep.updateUpkeepBatchLimit(6)).
+        to.emit(podsUpkeep, "UpkeepBatchLimitUpdated").withArgs(6)
 
     })
 
     it('non owner cannot update the Max Upkeep Batch', async () => {
-      await expect(podsUpkeep.connect(wallet2).updateUpkeepBatch(5)).
+      await expect(podsUpkeep.connect(wallet2).updateUpkeepBatchLimit(5)).
         to.be.revertedWith("Ownable: caller is not the owner")
     })
   })
@@ -170,9 +170,9 @@ describe('Pods Upkeep', function() {
   })
 
 
-  describe.only('able to call performUpkeep()', () => {
+  describe('able to call performUpkeep()', () => {
 
-    it.only('can execute batch()', async () => {
+    it('can execute batch()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
    
