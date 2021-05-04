@@ -21,13 +21,16 @@ module.exports = async (hardhat) => {
 
     const { getNamedAccounts, deployments, ethers } = hardhat
     const { deploy } = deployments
-    const { deployer, podsRegistry } = await getNamedAccounts()
-    const namedSigners = await ethers.getNamedSigners()
+    let { deployer, podsRegistry } = await getNamedAccounts()
+    
+    if(!podsRegistry){
+      podsRegistry = ethers.constants.AddressZero
+    }
 
     dim(`Deploying  contract from ${deployer}`)
 
     const podsUpkeepDeployResult = await deploy('PodsUpkeep', {
-      args: [podsRegistry, deployer],
+      args: [podsRegistry, deployer, 0],
       from: deployer,
       skipIfAlreadyDeployed: false
     })

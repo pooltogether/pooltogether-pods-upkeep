@@ -22,18 +22,45 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @notice Address of the registry of pods contract which require upkeep
     AddressRegistry public podsRegistry;
 
+    /// @dev Fixed length of the last upkeep block number (multiple this by 8 to get the maximum number of pods for storage)
     uint8 constant PODS_PACKED_ARRAY_SIZE = 10;
 
     uint256[PODS_PACKED_ARRAY_SIZE] internal lastUpkeepBlockNumber;
 
-    function _updateLastBlockNumberForPodIndex(uint256 _existingUpkeepBlockNumbers, uint8 _podIndex, uint32 _value) internal pure returns (uint256) { 
 
-        uint256 mask =  (type(uint32).max | uint256(0)) << (_podIndex * 32);
-        uint256 updateBits =  (uint256(0) | _value) << (32 * _podIndex);
+    /// @notice Updates a 256 bit word with a 32 bit representation of a block number at a particular index
+    /// @param _existingUpkeepBlockNumbers The 256 word
+    /// @param _podIndex The index within that word (0 to 7)
+    /// @param _value The block number value to be inserted
+    function _updateLastBlockNumberForPodIndex(uint256 _existingUpkeepBlockNumbers, uint8 _podIndex, uint32 _value) internal view returns (uint256) { 
+
+        uint256 mask =  (type(uint32).max | uint256(0)) << (_podIndex * 32); // get a mask of all 1's at the pod index
+        console.log("_updateLastBlockNumberForPodIndex::mask is ", mask);
         
-        return (updateBits | ~mask) & (_existingUpkeepBlockNumbers | ~mask);
+        uint256 updateBits =  (uint256(0) | _value) << (_podIndex * 32); // position value at index with 0's in every other position
+        console.log("_updateLastBlockNumberForPodIndex::updateBits is ", updateBits);
+
+        
+        // (updateBits | ~mask) 
+        // negation of the mask is 0's at the location of the block number, 1's everywhere else
+        // OR'ing it with updateBits will give 1's everywhere else, block number intact
+        
+        // (_existingUpkeepBlockNumbers | ~mask)
+        // OR'ing the negation of the mask with the existingUpkeepBlockNumbers will give 1's everywhere else but the podIndex -- WRONG?
+
+        // instead:
+
+        // (_existingUpkeepBlockNumbers | mask)
+        // OR'ing the exstingUpkeepBlockNumbers with mask will give maintain other blocknumber, put all 1's at podIndex
+        // finally AND'ing the two halves will filter through 1's if they are supposed to be there
+
+        //return (updateBits | ~mask) & (_existingUpkeepBlockNumbers | ~mask); 
+        return (updateBits | ~mask) & (_existingUpkeepBlockNumbers | mask); 
     }
 
+    /// @notice Takes a 256 bit word and 0 to 7 index within and returns the uint32 value at that index
+    /// @param _existingUpkeepBlockNumbers The 256 word
+    /// @param _podIndex The index within that word
     function _readLastBlockNumberForPodIndex(uint256 _existingUpkeepBlockNumbers, uint8 _podIndex) internal pure returns (uint32) { 
   
         uint256 mask =  (type(uint32).max | uint256(0)) << (_podIndex * 32);
@@ -48,7 +75,6 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         return _readLastBlockNumberForPodIndex(lastUpkeepBlockNumber[wordIndex], uint8(podIndex % 8));
     }
 
-
     /// @notice Global upkeep interval expressed in blocks at which pods.batch() will be called
     uint256 public upkeepBlockInterval;    
 
@@ -56,18 +82,21 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     event UpkeepBlockIntervalUpdated(uint upkeepBlockInterval);
 
     /// @notice Emitted when the upkeep max batch is updated
-    event UpkeepMaxBatchUpdated(uint upkeepMaxBatch);
+    event UpkeepBatchLimitUpdated(uint upkeepBatchLimit);
 
     /// @notice Maximum number of pods that performUpkeep can be called on
-    uint256 public upkeepMaxBatch;
+    uint256 public upkeepBatchLimit;
 
     /// @notice Contract Constructor. No initializer. 
-    constructor(AddressRegistry _podsRegistry, address _owner, uint256 _upkeepBlockInterval) Ownable() {
+    constructor(AddressRegistry _podsRegistry, address _owner, uint256 _upkeepBlockInterval, uint256 _upkeepBatchLimit) Ownable() {
         
         podsRegistry = _podsRegistry;
         transferOwnership(_owner);
         upkeepBlockInterval = _upkeepBlockInterval;
         emit UpkeepBlockIntervalUpdated(_upkeepBlockInterval);
+
+        upkeepBatchLimit = _upkeepBatchLimit;
+        emit UpkeepBatchLimitUpdated(_upkeepBatchLimit);
     }
 
     /// @notice Checks if Pods require upkeep. Call in a static manner every block by the Chainlink Upkeep network.
@@ -78,21 +107,36 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         address[] memory pods = podsRegistry.getAddresses();
         uint256 _upkeepBlockInterval = upkeepBlockInterval;
 
+        
+
         uint256 podsLenght = pods.length;
 
-        for(uint256 podWord = 0; podWord < podsLenght / 8; podWord++){
+        console.log("podsLenght" , podsLenght);
+
+        for(uint256 podWord = 0; podWord <= podsLenght / 8; podWord++){
             
+            console.log("podWord ", podWord);
+
             uint256 _lastUpkeep = lastUpkeepBlockNumber[podWord]; // this performs the SLOAD
             
+            console.log("_lastUpkeep ", _lastUpkeep);
+
             for(uint256 i = 0; i + (podWord * 8) < podsLenght; i++){ // pod index within word -- && batch limit conditional?
                 
                 uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_lastUpkeep, uint8(i));
+                
+                console.log("podLastUpkeepBlockNumber ", podLastUpkeepBlockNumber);
+
+                console.log("block number is ", block.number);
+
                 if(block.number > podLastUpkeepBlockNumber + _upkeepBlockInterval){
+                    console.log("returning true");
                     return (true, "");
                 }
             }
 
-        }               
+        }
+        console.log("returning false");               
         return (false, "");    
     }
 
@@ -103,25 +147,44 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         address[] memory pods = podsRegistry.getAddresses();
         uint256 podsLenght = pods.length;
         
-        for(uint256 podWord = 0; podWord < podsLenght / 8; podWord++){ // give word index
+        console.log("podLength" , podsLenght);
+        console.log("podLength/8" , podsLenght/8);
+
+        uint256 _batchLimit = upkeepBatchLimit;
+
+        uint256 batchesPerformed = 0;
+
+        for(uint8 podWord = 0; podWord <= podsLenght / 8; podWord++){ // give word index
             
             uint256 _updateBlockNumber = lastUpkeepBlockNumber[podWord]; // this performs the SLOAD
 
-            for(uint256 i = 0; i + (podWord * 8) < podsLenght; i++){ // pod index within word -- && batch limit conditional?
+            console.log("\n");
+            console.log("podWord is ", podWord);
+            console.log("_updateBlockNumber is ", _updateBlockNumber);
+
+            for(uint8 i = 0; i + (podWord * 8) < (podsLenght); i++){ // pod index within word -- && batch limit conditional?
                 
-                uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_updateBlockNumber, uint8(i));
+                uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_updateBlockNumber, i);
 
-                console.log("Reading Last Block Number for i ", i);
-                console.log("podLastUpkeep ", podLastUpkeepBlockNumber);
+                console.log("podLastUpkeepBlockNumber for i ", i, " podLastUpkeepBlockNumber ", podLastUpkeepBlockNumber);
 
-                if(block.number > podLastUpkeepBlockNumber + upkeepBlockInterval) {
-                    IPod(pods[i]).batch();
+                // what happens when a pod is removed from the registry -- zero out the address and insert a callStatic check for .batch() here?
+                if(block.number > podLastUpkeepBlockNumber + upkeepBlockInterval && batchesPerformed < _batchLimit) {
+                    console.log("block number is ", block.number);
+                    console.log("performing batch() for pods[i] ", i + (podWord * 8));
+                    IPod(pods[i + (podWord * 8)]).batch();
+
+                    batchesPerformed++;
+
                     // updated pod's most recent upkeep block number and store update to that 256 bit word
-                    _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, uint8(i), uint32(block.number));
+                    _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, i, uint32(block.number));
+                    console.log("_updateBlockNumber for i ", i , " ", _updateBlockNumber);
+                    console.log("\n");
                 }
             }
             
             // update the entire 256 bit word at once
+            console.log("writing update to storage slot ", podWord, " ", _updateBlockNumber);
             lastUpkeepBlockNumber[podWord] = _updateBlockNumber;
         }
     }
@@ -135,9 +198,9 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     }
 
     /// @notice Updates the upkeep max batch. Can only be called by the contract owner
-    /// @param _upkeepMaxBatch The new _upkeepMaxBatch
-    function updateUpkeepBatch(uint256 _upkeepMaxBatch) external onlyOwner {
-        upkeepMaxBatch = _upkeepMaxBatch;
-        emit UpkeepMaxBatchUpdated(_upkeepMaxBatch);
+    /// @param _upkeepBatchLimit The new _upkeepBatchLimit
+    function updateUpkeepBatch(uint256 _upkeepBatchLimit) external onlyOwner {
+        upkeepBatchLimit = _upkeepBatchLimit;
+        emit UpkeepBatchLimitUpdated(_upkeepBatchLimit);
     }
 }
