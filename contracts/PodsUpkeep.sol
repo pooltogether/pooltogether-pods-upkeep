@@ -11,7 +11,6 @@ import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
 
 /// @notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of a registry of Pod contracts
-/// @dev 
 contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     using SafeMathUpgradeable for uint256;
@@ -58,15 +57,16 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         uint256 mask =  (type(uint32).max | uint256(0)) << (_podIndex * 32); // get a mask of all 1's at the pod index    
         uint256 updateBits =  (uint256(0) | _value) << (_podIndex * 32); // position value at index with 0's in every other position
 
-        // (updateBits | ~mask) 
-        // negation of the mask is 0's at the location of the block number, 1's everywhere else
-        // OR'ing it with updateBits will give 1's everywhere else, block number intact
+        /* 
+        (updateBits | ~mask) 
+            negation of the mask is 0's at the location of the block number, 1's everywhere else
+            OR'ing it with updateBits will give 1's everywhere else, block number intact
         
-        // (_existingUpkeepBlockNumbers | mask)
-        // OR'ing the exstingUpkeepBlockNumbers with mask will give maintain other blocknumber, put all 1's at podIndex
-        // finally AND'ing the two halves will filter through 1's if they are supposed to be there
-
-        //return (updateBits | ~mask) & (_existingUpkeepBlockNumbers | ~mask); 
+        (_existingUpkeepBlockNumbers | mask)
+            OR'ing the exstingUpkeepBlockNumbers with mask will give maintain other blocknumber, put all 1's at podIndex
+        
+            finally AND'ing the two halves will filter through 1's if they are supposed to be there
+        */
         return (updateBits | ~mask) & (_existingUpkeepBlockNumbers | mask); 
     }
 
@@ -128,8 +128,8 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
                 if(batchesPerformed >= _batchLimit) {
                     break;
                 }
+                // get the 32 bit block number from the 256 bit word
                 uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_updateBlockNumber, i);
-                // what happens when a pod is removed from the registry -- zero out the address and insert a callStatic check for .batch() here?
                 if(block.number > podLastUpkeepBlockNumber + upkeepBlockInterval) {
                     
                     IPod(pods[i + (podWord * 8)]).batch();
@@ -138,8 +138,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
                     _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, i, uint32(block.number));
                 }
             }         
-            // update the entire 256 bit word at once
-            lastUpkeepBlockNumber[podWord] = _updateBlockNumber;
+            lastUpkeepBlockNumber[podWord] = _updateBlockNumber; // update the entire 256 bit word at once
         }
     }
 
