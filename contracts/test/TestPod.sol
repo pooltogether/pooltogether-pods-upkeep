@@ -10,9 +10,4 @@ contract MockPod is IPod {
         return true;
     }
     
-
-    function vaultTokenBalance() external view override returns (uint256){
-        return 1000;
-    }
-
 }

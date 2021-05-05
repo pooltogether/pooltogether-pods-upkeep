@@ -11,7 +11,7 @@ import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
 
 /// @notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of a registry of Pod contracts
-/// @dev This can only handle 8 Pods safely due to the gas saving data structure PodLoadUpkeepBlockNumber
+/// @dev 
 contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     using SafeMathUpgradeable for uint256;
@@ -49,7 +49,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         emit UpkeepBatchLimitUpdated(_upkeepBatchLimit);
     }
 
-        /// @notice Updates a 256 bit word with a 32 bit representation of a block number at a particular index
+    /// @notice Updates a 256 bit word with a 32 bit representation of a block number at a particular index
     /// @param _existingUpkeepBlockNumbers The 256 word
     /// @param _podIndex The index within that word (0 to 7)
     /// @param _value The block number value to be inserted

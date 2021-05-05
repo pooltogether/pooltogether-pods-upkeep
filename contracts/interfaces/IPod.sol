@@ -9,6 +9,4 @@ interface IPod {
     function batch() external returns (bool);
     
 
-    function vaultTokenBalance() external view returns (uint256);
-
 }
