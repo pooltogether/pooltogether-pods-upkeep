@@ -10,7 +10,7 @@ describe('Pods Upkeep', function() {
 
 
   let wallet, wallet2
-  let podsRegistry;
+  let podsRegistry, podsRegistry2;
   let podsUpkeep
 
   let pod1, pod2, pod3, pod4, pod5, pod6, pod7, pod8, pod9, pod10
@@ -21,7 +21,8 @@ describe('Pods Upkeep', function() {
   
     const podsRegistryContractFactory = await hre.ethers.getContractFactory("AddressRegistry", wallet, overrides)
     podsRegistry = await podsRegistryContractFactory.deploy("Pods", wallet.address)
-  
+    podsRegistry2 = await podsRegistryContractFactory.deploy("Pods", wallet2.address)
+
     const podsUpkeepContractFactory = await hre.ethers.getContractFactory("PodsUpkeepHarness", wallet, overrides)
     podsUpkeep = await podsUpkeepContractFactory.deploy(podsRegistry.address, wallet.address, 0, 5)
 
@@ -107,13 +108,19 @@ describe('Pods Upkeep', function() {
       
       expect(await podsUpkeep.updateUpkeepBatchLimit(6)).
         to.emit(podsUpkeep, "UpkeepBatchLimitUpdated").withArgs(6)
-
     })
 
     it('non owner cannot update the Max Upkeep Batch', async () => {
       await expect(podsUpkeep.connect(wallet2).updateUpkeepBatchLimit(5)).
         to.be.revertedWith("Ownable: caller is not the owner")
     })
+
+    it('can update the pods registry', async () => {
+    
+    expect(await podsUpkeep.updatePodsRegistry(podsRegistry2.address)).
+        to.emit(podsUpkeep, "PodsRegistryUpdated")
+    })
+
   })
 
   describe('able to call checkUpkeep()', () => {
@@ -138,16 +145,16 @@ describe('Pods Upkeep', function() {
       // performing Upkeep so that the lastUpdatedBlockNumbers are recorded
       await podsUpkeep.updateBlockUpkeepInterval(0)
       
-      await pod1.mock.batch.returns(true)
-      await pod2.mock.batch.returns(true)
-      await pod3.mock.batch.returns(true)
-      await pod4.mock.batch.returns(true)
-      await pod5.mock.batch.returns(true)
-      await pod6.mock.batch.returns(true)
-      await pod7.mock.batch.returns(true)
-      await pod8.mock.batch.returns(true)
-      await pod9.mock.batch.returns(true)
-      await pod10.mock.batch.returns(true)
+      await pod1.mock.drop.returns(1)
+      await pod2.mock.drop.returns(1)
+      await pod3.mock.drop.returns(1)
+      await pod4.mock.drop.returns(1)
+      await pod5.mock.drop.returns(1)
+      await pod6.mock.drop.returns(1)
+      await pod7.mock.drop.returns(1)
+      await pod8.mock.drop.returns(1)
+      await pod9.mock.drop.returns(1)
+      await pod10.mock.drop.returns(1)
 
       await podsUpkeep.performUpkeep("0x")
 
@@ -172,39 +179,28 @@ describe('Pods Upkeep', function() {
 
   describe('able to call performUpkeep()', () => {
 
-    it('can execute batch()', async () => {
+    it('can execute drop()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
    
-      // await pod1.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod2.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod3.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod4.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod5.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod6.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod7.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod8.mock.batch.revertsWithReason("batch-mock-revert")
-      // await pod9.mock.batch.revertsWithReason("batch-mock-revert")
-      // await expect(podsUpkeep.performUpkeep("0x")).to.be.revertedWith("batch-mock-revert")
-
-      await pod1.mock.batch.returns(true)
-      await pod2.mock.batch.returns(true)
-      await pod3.mock.batch.returns(true)
-      await pod4.mock.batch.returns(true)
-      await pod5.mock.batch.returns(true)
-      await pod6.mock.batch.returns(true)
-      await pod7.mock.batch.returns(true)
-      await pod8.mock.batch.returns(true)
-      await pod9.mock.batch.returns(true)
-      await pod10.mock.batch.returns(true)
+      await pod1.mock.drop.returns(1)
+      await pod2.mock.drop.returns(1)
+      await pod3.mock.drop.returns(1)
+      await pod4.mock.drop.returns(1)
+      await pod5.mock.drop.returns(1)
+      await pod6.mock.drop.returns(1)
+      await pod7.mock.drop.returns(1)
+      await pod8.mock.drop.returns(1)
+      await pod9.mock.drop.returns(1)
+      await pod10.mock.drop.returns(1)
 
       await podsUpkeep.performUpkeep("0x")
     })
 
-    it('reverts on execute batch()', async () => {
+    it('reverts on execute drop()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      await pod1.mock.batch.returns(false)
+      await pod1.mock.drop.returns(1)
      
       await expect(podsUpkeep.performUpkeep("0x")).to.be.reverted
     })

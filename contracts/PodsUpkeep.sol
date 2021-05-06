@@ -31,6 +31,9 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     /// @notice Emitted when the upkeep max batch is updated
     event UpkeepBatchLimitUpdated(uint upkeepBatchLimit);
+    
+    /// @notice Emitted when the address registry is updated
+    event PodsRegistryUpdated(AddressRegistry addressRegistry);
 
     /// @notice Maximum number of pods that performUpkeep can be called on
     uint256 public upkeepBatchLimit;
@@ -39,6 +42,8 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     constructor(AddressRegistry _podsRegistry, address _owner, uint256 _upkeepBlockInterval, uint256 _upkeepBatchLimit) Ownable() {
         
         podsRegistry = _podsRegistry;
+        emit PodsRegistryUpdated(_podsRegistry);
+
         transferOwnership(_owner);
         
         upkeepBlockInterval = _upkeepBlockInterval;
@@ -94,12 +99,12 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
         
         address[] memory pods = podsRegistry.getAddresses();
         uint256 _upkeepBlockInterval = upkeepBlockInterval;
-        uint256 podsLenght = pods.length;
+        uint256 podsLength = pods.length;
 
-        for(uint256 podWord = 0; podWord <= podsLenght / 8; podWord++){
+        for(uint256 podWord = 0; podWord <= podsLength / 8; podWord++){
 
             uint256 _lastUpkeep = lastUpkeepBlockNumber[podWord]; // this performs the SLOAD
-            for(uint256 i = 0; i + (podWord * 8) < podsLenght; i++){
+            for(uint256 i = 0; i + (podWord * 8) < podsLength; i++){
                 
                 uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_lastUpkeep, uint8(i));
                 if(block.number > podLastUpkeepBlockNumber + _upkeepBlockInterval){
@@ -115,15 +120,15 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     function performUpkeep(bytes calldata performData) override external {
     
         address[] memory pods = podsRegistry.getAddresses();
-        uint256 podsLenght = pods.length;
+        uint256 podsLength = pods.length;
         uint256 _batchLimit = upkeepBatchLimit;
         uint256 batchesPerformed = 0;
 
-        for(uint8 podWord = 0; podWord <= podsLenght / 8; podWord++){ // give word index
+        for(uint8 podWord = 0; podWord <= podsLength / 8; podWord++){ // give word index
             
             uint256 _updateBlockNumber = lastUpkeepBlockNumber[podWord]; // this performs the SLOAD
 
-            for(uint8 i = 0; i + (podWord * 8) < podsLenght; i++){ // pod index within word
+            for(uint8 i = 0; i + (podWord * 8) < podsLength; i++){ // pod index within word
                 
                 if(batchesPerformed >= _batchLimit) {
                     break;
@@ -132,7 +137,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
                 uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_updateBlockNumber, i);
                 if(block.number > podLastUpkeepBlockNumber + upkeepBlockInterval) {
                     
-                    IPod(pods[i + (podWord * 8)]).batch();
+                    IPod(pods[i + (podWord * 8)]).drop();
                     batchesPerformed++;
                     // updated pod's most recent upkeep block number and store update to that 256 bit word
                     _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, i, uint32(block.number));
@@ -154,5 +159,12 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     function updateUpkeepBatchLimit(uint256 _upkeepBatchLimit) external onlyOwner {
         upkeepBatchLimit = _upkeepBatchLimit;
         emit UpkeepBatchLimitUpdated(_upkeepBatchLimit);
+    }
+
+    /// @notice Updates the address registry. Can only be called by the contract owner
+    /// @param _addressRegistry The new podsRegistry
+    function updatePodsRegistry(AddressRegistry _addressRegistry) external onlyOwner {
+        podsRegistry = _addressRegistry;
+        emit PodsRegistryUpdated(_addressRegistry);
     }
 }
