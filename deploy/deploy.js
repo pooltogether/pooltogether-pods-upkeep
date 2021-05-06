@@ -1,6 +1,7 @@
 const chalk = require('chalk');
 const { getChainId } = require('hardhat');
-const { factoryDeploy } = require('@pooltogether/pooltogether-proxy-factory-package')
+const { factoryDeploy } = require('@pooltogether/pooltogether-proxy-factory-package');
+const { cyan } = require('chalk');
 
 
 
@@ -22,22 +23,21 @@ module.exports = async (hardhat) => {
     const { getNamedAccounts, deployments, ethers } = hardhat
     const { deploy } = deployments
     let { deployer, podsRegistry } = await getNamedAccounts()
+
+    
     
     if(!podsRegistry){
+      cyan(`No pods registry found in namedAccounts`)
       podsRegistry = ethers.constants.AddressZero
     }
 
     dim(`Deploying  contract from ${deployer}`)
 
     const podsUpkeepDeployResult = await deploy('PodsUpkeep', {
-      args: [podsRegistry, deployer, 0],
+      args: [podsRegistry, deployer, 10, 20],
       from: deployer,
       skipIfAlreadyDeployed: false
     })
     green(`Deployed podsUpkeepDeployResult: ${podsUpkeepDeployResult.address}`)
-
-
-  
-    // do we want to add the governance prize pools and transfer ownership in here
 
 }

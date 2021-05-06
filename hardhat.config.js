@@ -6,8 +6,6 @@ require('hardhat-dependency-compiler')
 // require('hardhat-gas-reporter')
 require('hardhat-abi-exporter')
 
-require('hardhat-ethernal')
-
 const networks = require('./hardhat.networks')
 
 /**
@@ -54,7 +52,7 @@ module.exports = {
       4: "0x72c9aA4c753fc36cbF3d1fF6fEc0bC44ad41D7f2"
     },
     podsRegistry: {
-      4: ""
+      4: "0xB917f266424B803F389c79B86609710247a0370f"
     }
     
   },
