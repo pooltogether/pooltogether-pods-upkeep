@@ -1,7 +1,7 @@
 {
-  "name": "@pooltogether/pods-operations",
-  "version": "1.0.0",
-  "description": "Operations contracts for the PoolTogether pods",
+  "name": "@pooltogether/pooltogether-pods-upkeep",
+  "version": "1.0.0-beta.2",
+  "description": "Upkeep integration contracts for the PoolTogether pods",
   "author": "Aodhgan Gleeson",
   "license": "MIT",
   "scripts": {
@@ -12,7 +12,6 @@
     "clean": "rm -rf artifacts cache build",
     "fork-run": "hardhat run --network localhost",
     "prepack": "yarn clean && hardhat compile",
-    "postpublish": "PACKAGE_VERSION=$(./scripts/package-version.sh) && git tag -ae v$PACKAGE_VERSION && git push --tags",
     "test": "solhint contracts/**/*.sol && hardhat test",
     "coverage": "hardhat coverage",
     "hint": "solhint \"contracts/**/*.sol\""
@@ -38,5 +37,11 @@
     "mocha-junit-reporter": "^2.0.0",
     "solhint": "^3.3.3",
     "solidity-coverage": "^0.7.15"
-  }
+  },
+  "files": [
+    "contracts",
+    "abis",
+    "artifacts",
+    "deployments"
+  ]
 }
