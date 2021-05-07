@@ -200,9 +200,9 @@ describe('Pods Upkeep', function() {
     it('reverts on execute drop()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      await pod1.mock.drop.returns(1)
+      await pod1.mock.drop.revertsWithReason("PeriodicPrizeStrategy/rng-in-flight")
      
-      await expect(podsUpkeep.performUpkeep("0x")).to.be.reverted
+      await expect(podsUpkeep.performUpkeep("0x")).to.emit(podsUpkeep, "ErrorCallingDrop")
     })
 
   })
