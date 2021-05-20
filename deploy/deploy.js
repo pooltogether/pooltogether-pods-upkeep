@@ -22,22 +22,23 @@ module.exports = async (hardhat) => {
 
     const { getNamedAccounts, deployments, ethers } = hardhat
     const { deploy } = deployments
-    let { deployer, podsRegistry } = await getNamedAccounts()
+    let { deployer, owner, podsRegistry } = await getNamedAccounts()
 
-    
-    
     if(!podsRegistry){
-      cyan(`No pods registry found in namedAccounts`)
-      podsRegistry = ethers.constants.AddressZero
+      throw new Error(`No pods registry found in namedAccounts`)
     }
 
-    dim(`Deploying  contract from ${deployer}`)
+    dim(`Deploying contract from ${deployer}`)
+
+    let batchIntervalInBlocks = 6171 // about once per day
+    let batchSize = 3    
 
     const podsUpkeepDeployResult = await deploy('PodsUpkeep', {
-      args: [podsRegistry, deployer, 10, 20],
+      args: [podsRegistry, owner, batchIntervalInBlocks, batchSize],
       from: deployer,
       skipIfAlreadyDeployed: false
     })
+ 
     green(`Deployed podsUpkeepDeployResult: ${podsUpkeepDeployResult.address}`)
 
 }
