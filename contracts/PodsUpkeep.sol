@@ -35,10 +35,6 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @notice Emitted when the address registry is updated
     event PodsRegistryUpdated(AddressRegistry addressRegistry);
 
-    /// @notice Emitted when the drop() call reverts
-    /// @param error is the revert message
-     event ErrorCallingDrop(string error);
-
     /// @notice Maximum number of pods that performUpkeep can be called on
     uint256 public upkeepBatchLimit;
 
@@ -140,14 +136,10 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
                 // get the 32 bit block number from the 256 bit word
                 uint32 podLastUpkeepBlockNumber = _readLastBlockNumberForPodIndex(_updateBlockNumber, i);
                 if(block.number > podLastUpkeepBlockNumber + upkeepBlockInterval) {
-                    try IPod(pods[i + (podWord * 8)]).drop() {
-                        batchesPerformed++;
-                        // updated pod's most recent upkeep block number and store update to that 256 bit word
-                        _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, i, uint32(block.number));                
-                    }
-                    catch(bytes memory error){
-                        emit ErrorCallingDrop(string(error));
-                    }                    
+                    IPod(pods[i + (podWord * 8)]).drop();
+                    batchesPerformed++;
+                    // updated pod's most recent upkeep block number and store update to that 256 bit word
+                    _updateBlockNumber = _updateLastBlockNumberForPodIndex(_updateBlockNumber, i, uint32(block.number));                   
                 }
             }         
             lastUpkeepBlockNumber[podWord] = _updateBlockNumber; // update the entire 256 bit word at once
