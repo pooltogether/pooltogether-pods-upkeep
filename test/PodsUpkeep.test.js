@@ -52,7 +52,6 @@ describe('Pods Upkeep', function() {
         pod10.address
       ]
     )
-    
   })
 
   describe('bitwise operations ', () => {
@@ -200,9 +199,9 @@ describe('Pods Upkeep', function() {
     it('reverts on execute drop()', async () => {
 
       await podsUpkeep.updateBlockUpkeepInterval(1)
-      await pod1.mock.drop.revertsWithReason("PeriodicPrizeStrategy/rng-in-flight")
-     
-      await expect(podsUpkeep.performUpkeep("0x")).to.emit(podsUpkeep, "ErrorCallingDrop")
+
+      await pod1.mock.drop.revertsWithReason("Pods/drop-failed")
+      await expect(podsUpkeep.performUpkeep("0x")).to.be.reverted
     })
 
   })
