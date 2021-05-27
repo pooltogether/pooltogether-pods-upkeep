@@ -30,7 +30,7 @@ module.exports = async (hardhat) => {
 
     dim(`Deploying contract from ${deployer}`)
 
-    let batchIntervalInBlocks = 6171 // about once per day
+    let batchIntervalInBlocks = 6171 // 6171: about once per day
     let batchSize = 3    
 
     const podsUpkeepDeployResult = await deploy('PodsUpkeep', {

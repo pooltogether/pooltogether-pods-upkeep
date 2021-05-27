@@ -53,7 +53,7 @@ module.exports = {
     },
     podsRegistry: {
       1: "0x4658f736b93dCDdCbCe46cDe955970E697fd351f",
-      4: "0xB917f266424B803F389c79B86609710247a0370f"
+      4: "0xe89f13fD3e5f13f49B6C4c48ae7104A01f2E70cF"
     }
     
   },
