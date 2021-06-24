@@ -116,8 +116,8 @@ describe('Pods Upkeep', function() {
 
     it('can update the pods registry', async () => {
     
-    expect(await podsUpkeep.updatePodsRegistry(podsRegistry2.address)).
-        to.emit(podsUpkeep, "PodsRegistryUpdated")
+      expect(await podsUpkeep.updatePodsRegistry(podsRegistry2.address)).
+          to.emit(podsUpkeep, "PodsRegistryUpdated")
     })
 
   })
@@ -131,6 +131,7 @@ describe('Pods Upkeep', function() {
     })
 
     it('block interval not passed, upkeep not needed', async () => {
+      
       await podsUpkeep.updateBlockUpkeepInterval(1000)
       let provider = hre.ethers.provider
 
@@ -171,6 +172,13 @@ describe('Pods Upkeep', function() {
       // should now require upKeep      
       const checkResultEnd = await podsUpkeep.callStatic.checkUpkeep("0x")
       expect(checkResultEnd[0]).to.be.equal(true)
+    })
+
+    it('contract paused checkUpkeep returns false', async () => {
+      await podsUpkeep.pause()
+            
+      const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
+      expect(checkResult[0]).to.be.equal(false)
     })
 
   })

@@ -98,6 +98,8 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable, Pausable {
     /// @return upkeepNeeded as true if performUpkeep() needs to be called, false otherwise. performData returned empty. 
     function checkUpkeep(bytes calldata checkData) override external view returns (bool upkeepNeeded, bytes memory performData) {
         
+        if(paused()) return (false, performData);   
+
         address[] memory pods = podsRegistry.getAddresses();
         uint256 _upkeepBlockInterval = upkeepBlockInterval;
         uint256 podsLength = pods.length;
@@ -118,7 +120,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable, Pausable {
 
     /// @notice Performs upkeep on the pods contract and updates lastUpkeepBlockNumbers
     /// @param performData Not used in this implementation.
-    function performUpkeep(bytes calldata performData) override external whenNotPaused {
+    function performUpkeep(bytes calldata performData) override external whenNotPaused{
     
         address[] memory pods = podsRegistry.getAddresses();
         uint256 podsLength = pods.length;
