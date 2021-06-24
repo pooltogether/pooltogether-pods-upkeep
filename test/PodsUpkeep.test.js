@@ -206,4 +206,38 @@ describe('Pods Upkeep', function() {
 
   })
 
+
+  describe('owner can pause contract and upkeep cannot be performed', () => {
+    it('owner can pause', async () => {
+      await expect(podsUpkeep.pause())
+      .to.emit(podsUpkeep, "Paused")
+      
+      await podsUpkeep.updateBlockUpkeepInterval(1)
+   
+      await pod1.mock.drop.returns(1)
+      await pod2.mock.drop.returns(1)
+      await pod3.mock.drop.returns(1)
+      await pod4.mock.drop.returns(1)
+      await pod5.mock.drop.returns(1)
+      await pod6.mock.drop.returns(1)
+      await pod7.mock.drop.returns(1)
+      await pod8.mock.drop.returns(1)
+      await pod9.mock.drop.returns(1)
+      await pod10.mock.drop.returns(1)
+
+      await expect(podsUpkeep.performUpkeep("0x")).to.be.revertedWith("paused")
+
+      await expect(podsUpkeep.unpause())
+      .to.emit(podsUpkeep, "Unpaused")
+
+
+      await expect(podsUpkeep.performUpkeep("0x")).to.not.be.reverted
+
+    })
+    it('non-owner cannot pause', async () => {
+      await expect(podsUpkeep.connect(wallet2).pause())
+      .to.be.reverted
+    })
+  })
+
 });
