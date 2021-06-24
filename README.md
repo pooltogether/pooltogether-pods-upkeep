@@ -1,6 +1,6 @@
 # pooltogether-pods-upkeep
 
-[![Coverage Status](https://coveralls.io/repos/github/pooltogether/pooltogether-pods-upkeep/badge.svg?branch=main)](https://coveralls.io/github/pooltogether/pooltogether-pods-upkeep?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/pooltogether/pooltogether-pods-upkeep/badge.svg?branch=master)](https://coveralls.io/github/pooltogether/pooltogether-pods-upkeep?branch=master)
 
 ![Tests](https://github.com/pooltogether/pooltogether-pods-upkeep/actions/workflows/main.yml/badge.svg)
 
