@@ -3,6 +3,7 @@
 pragma solidity ^0.7.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
 
 import "@pooltogether/pooltogether-generic-registry/contracts/AddressRegistry.sol";
@@ -11,7 +12,7 @@ import "./interfaces/IPod.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
 
 /// @notice Contract implements Chainlink's Upkeep system interface, automating the upkeep of a registry of Pod contracts
-contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
+contract PodsUpkeep is KeeperCompatibleInterface, Ownable, Pausable {
 
     using SafeMathUpgradeable for uint256;
     
@@ -97,6 +98,8 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     /// @return upkeepNeeded as true if performUpkeep() needs to be called, false otherwise. performData returned empty. 
     function checkUpkeep(bytes calldata checkData) override external view returns (bool upkeepNeeded, bytes memory performData) {
         
+        if(paused()) return (false, performData);   
+
         address[] memory pods = podsRegistry.getAddresses();
         uint256 _upkeepBlockInterval = upkeepBlockInterval;
         uint256 podsLength = pods.length;
@@ -117,7 +120,7 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
 
     /// @notice Performs upkeep on the pods contract and updates lastUpkeepBlockNumbers
     /// @param performData Not used in this implementation.
-    function performUpkeep(bytes calldata performData) override external {
+    function performUpkeep(bytes calldata performData) override external whenNotPaused{
     
         address[] memory pods = podsRegistry.getAddresses();
         uint256 podsLength = pods.length;
@@ -165,5 +168,15 @@ contract PodsUpkeep is KeeperCompatibleInterface, Ownable {
     function updatePodsRegistry(AddressRegistry _addressRegistry) external onlyOwner {
         podsRegistry = _addressRegistry;
         emit PodsRegistryUpdated(_addressRegistry);
+    }
+
+    /// @notice Pauses the contract. Only callable by owner.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpauses the contract. Only callable by owner.
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

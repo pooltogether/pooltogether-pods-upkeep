@@ -116,8 +116,8 @@ describe('Pods Upkeep', function() {
 
     it('can update the pods registry', async () => {
     
-    expect(await podsUpkeep.updatePodsRegistry(podsRegistry2.address)).
-        to.emit(podsUpkeep, "PodsRegistryUpdated")
+      expect(await podsUpkeep.updatePodsRegistry(podsRegistry2.address)).
+          to.emit(podsUpkeep, "PodsRegistryUpdated")
     })
 
   })
@@ -131,6 +131,7 @@ describe('Pods Upkeep', function() {
     })
 
     it('block interval not passed, upkeep not needed', async () => {
+      
       await podsUpkeep.updateBlockUpkeepInterval(1000)
       let provider = hre.ethers.provider
 
@@ -173,6 +174,13 @@ describe('Pods Upkeep', function() {
       expect(checkResultEnd[0]).to.be.equal(true)
     })
 
+    it('contract paused checkUpkeep returns false', async () => {
+      await podsUpkeep.pause()
+            
+      const checkResult = await podsUpkeep.callStatic.checkUpkeep("0x")
+      expect(checkResult[0]).to.be.equal(false)
+    })
+
   })
 
 
@@ -204,6 +212,40 @@ describe('Pods Upkeep', function() {
       await expect(podsUpkeep.performUpkeep("0x")).to.be.reverted
     })
 
+  })
+
+
+  describe('owner can pause contract and upkeep cannot be performed', () => {
+    it('owner can pause', async () => {
+      await expect(podsUpkeep.pause())
+      .to.emit(podsUpkeep, "Paused")
+      
+      await podsUpkeep.updateBlockUpkeepInterval(1)
+   
+      await pod1.mock.drop.returns(1)
+      await pod2.mock.drop.returns(1)
+      await pod3.mock.drop.returns(1)
+      await pod4.mock.drop.returns(1)
+      await pod5.mock.drop.returns(1)
+      await pod6.mock.drop.returns(1)
+      await pod7.mock.drop.returns(1)
+      await pod8.mock.drop.returns(1)
+      await pod9.mock.drop.returns(1)
+      await pod10.mock.drop.returns(1)
+
+      await expect(podsUpkeep.performUpkeep("0x")).to.be.revertedWith("paused")
+
+      await expect(podsUpkeep.unpause())
+      .to.emit(podsUpkeep, "Unpaused")
+
+
+      await expect(podsUpkeep.performUpkeep("0x")).to.not.be.reverted
+
+    })
+    it('non-owner cannot pause', async () => {
+      await expect(podsUpkeep.connect(wallet2).pause())
+      .to.be.reverted
+    })
   })
 
 });
